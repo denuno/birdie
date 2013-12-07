@@ -15,26 +15,23 @@
  */
 
 namespace Birdie.Widgets {
-    public class TweetList : Gtk.ListBox {
+    public class TweetList : Gtk.Box {
         public GLib.List<TweetBox> boxes;
         public GLib.List<Gtk.Separator> separators;
 
         public MoreButton more_button;
 
-        private bool first;
+        bool first;
+        int count;
         public bool load_more;
-        private int count;
 
         public TweetList () {
-            GLib.Object (valign: Gtk.Align.START);
+            GLib.Object (orientation: Gtk.Orientation.VERTICAL, valign: Gtk.Align.START);
             this.first = true;
             this.count = 0;
             this.load_more = false;
 
-            this.set_selection_mode (Gtk.SelectionMode.NONE);
-
             this.more_button = new MoreButton ();
-            this.show_all ();
         }
 
         public void append (Tweet tweet, Birdie birdie) {
@@ -44,17 +41,11 @@ namespace Birdie.Widgets {
             if (this.count > 100) {
                 var box_old = this.boxes.nth_data (0);
                 var separator_old = this.separators.nth_data (0);
-                var row_box_old = this.get_row_for_widget (box_old);
-                var row_separator_old = this.get_row_for_widget (separator_old);
 
                 this.separators.remove (separator_old);
                 this.boxes.remove (box_old);
                 box_old.destroy();
                 separator_old.destroy();
-                base.remove (row_box_old);
-                base.remove (row_separator_old);
-
-                count--;
             }
 
             boxes.append (box);
@@ -62,11 +53,11 @@ namespace Birdie.Widgets {
 
             Idle.add( () => {
                 if (!this.first)
-                    base.prepend (separator);
+                    this.pack_end (separator, false, false, 0);
                 else if (this.load_more)
-                    base.prepend (this.more_button.button);
+                    this.pack_end (this.more_button, false, false, 0);
 
-                base.prepend (box);
+                this.pack_end (box, false, false, 0);
 
                 if (this.first)
                     this.first = false;
@@ -79,7 +70,7 @@ namespace Birdie.Widgets {
             });
         }
 
-        public new void prepend (Tweet tweet, Birdie birdie) {
+        public void prepend (Tweet tweet, Birdie birdie) {
             if (this.boxes.nth_data (0).tweet.actual_id != tweet.actual_id) {
                 TweetBox box = new TweetBox(tweet, birdie);
                 Gtk.Separator separator = new Gtk.Separator (Gtk.Orientation.HORIZONTAL);
@@ -88,15 +79,12 @@ namespace Birdie.Widgets {
                 separators.prepend (separator);
 
                 Idle.add( () => {
-                    if (!this.first && this.load_more)
-                        base.insert (separator, (int) base.get_children ().length () - 1);
-                    else if (!this.first)
-                        base.insert (separator, (int) base.get_children ().length ());
+                    if (!this.first)
+                        this.pack_end (separator, false, false, 0);
+                    this.pack_end (box, false, false, 0);
 
-                    if (this.load_more)
-                        base.insert (box, (int) base.get_children ().length () - 1);
-                    else
-                        base.insert (box, (int) base.get_children ().length ());
+                    this.reorder_child (box, 1);
+                    this.reorder_child (separator, 2);
 
                     if (this.first)
                         this.first = false;
@@ -114,14 +102,10 @@ namespace Birdie.Widgets {
                     Idle.add( () => {
                         int separator_index = boxes.index (box);
                         var separator = this.separators.nth_data ((uint) separator_index);
-                        var box_row = this.get_row_for_widget (box);
-                        var separator_row = this.get_row_for_widget (separator);
                         this.separators.remove (separator);
                         this.boxes.remove (box);
                         box.destroy();
                         separator.destroy();
-                        base.remove (box_row);
-                        base.remove (separator_row);
                         this.count--;
                         return false;
                     });
@@ -167,16 +151,10 @@ namespace Birdie.Widgets {
                     });
                 }
             }
-        }
 
-        public Gtk.ListBoxRow? get_row_for_widget (Gtk.Widget find) {
-            foreach (Gtk.Widget w in this.get_children()) {
-                if (((Gtk.ListBoxRow) w).get_child () == find) {
-                    return (Gtk.ListBoxRow) w;
-                }
-            }
-
-            return null;
+            Idle.add (() => {
+                return false;
+            });
         }
 
         public string get_oldest () {

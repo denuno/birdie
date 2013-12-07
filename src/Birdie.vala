@@ -20,7 +20,7 @@ namespace Birdie {
 #else
     public class Birdie : Gtk.Application {
 #endif
-		private Gtk.Box m_box;
+
         public Widgets.UnifiedWindow m_window;
         public Widgets.TweetList home_list;
         public Widgets.TweetList mentions_list;
@@ -146,8 +146,8 @@ namespace Birdie {
             about_license_type  = Gtk.License.GPL_3_0;
         }
 #else
-        private Gtk.SearchEntry search_entry;
-        private Gtk.MenuButton appmenu;
+        private Gtk.Entry search_entry;
+        private Gtk.MenuToolButton appmenu;
 #endif
 
         public Birdie () {
@@ -224,8 +224,6 @@ namespace Birdie {
                 this.unread_mentions = 0;
                 this.unread_dm = 0;
 
-                this.m_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
-
                 this.new_tweet = new Gtk.ToolButton (new Gtk.Image.from_icon_name ("mail-message-new", Gtk.IconSize.LARGE_TOOLBAR), _("New Tweet"));
                 new_tweet.set_tooltip_text (_("New Tweet"));
 
@@ -240,9 +238,12 @@ namespace Birdie {
                 });
 
                 new_tweet.set_sensitive (false);
-                this.m_window.header.pack_start (new_tweet);
+                this.m_window.header.add (new_tweet);
                 
-                Gtk.Box centered_toolbar = new Gtk.Box (Gtk.Orientation.HORIZONTAL, 0);
+                var left_sep = new Gtk.SeparatorToolItem ();
+                left_sep.draw = false;
+                left_sep.set_expand (true);
+                this.m_window.header.add (left_sep);
                 
                 this.home = new Gtk.ToggleToolButton ();
                 this.home.set_icon_widget (new Gtk.Image.from_icon_name ("twitter-home", Gtk.IconSize.LARGE_TOOLBAR));
@@ -253,7 +254,7 @@ namespace Birdie {
                         this.switch_timeline ("home");
                 });
                 this.home.set_sensitive (false);
-                centered_toolbar.add (home);
+                this.m_window.header.add (home);
 
                 this.mentions = new Gtk.ToggleToolButton ();
                 this.mentions.set_icon_widget (new Gtk.Image.from_icon_name ("twitter-mentions", Gtk.IconSize.LARGE_TOOLBAR));
@@ -264,7 +265,7 @@ namespace Birdie {
                         this.switch_timeline ("mentions");
                 });
                 this.mentions.set_sensitive (false);
-                centered_toolbar.add (mentions);
+                this.m_window.header.add (mentions);
 
                 this.dm = new Gtk.ToggleToolButton ();
                 this.dm.set_icon_widget (new Gtk.Image.from_icon_name ("twitter-dm", Gtk.IconSize.LARGE_TOOLBAR));
@@ -275,7 +276,7 @@ namespace Birdie {
                         this.switch_timeline ("dm");
                 });
                 this.dm.set_sensitive (false);
-                centered_toolbar.add (dm);
+                this.m_window.header.add (dm);
 
                 this.profile = new Gtk.ToggleToolButton ();
                 this.profile.set_icon_widget (new Gtk.Image.from_icon_name ("twitter-profile", Gtk.IconSize.LARGE_TOOLBAR));
@@ -287,40 +288,24 @@ namespace Birdie {
                         this.switch_timeline ("own");
                 });
                 this.profile.set_sensitive (false);
-                centered_toolbar.add (profile);
-
-                // create the searchentry
-#if HAVE_GRANITE
-                search_entry = new Granite.Widgets.SearchBar (_("Search"));
-#else
-                search_entry = new Gtk.SearchEntry ();
-#endif
-
-                search_entry.activate.connect (() => {
-                    this.search_term = ((Gtk.Entry)search_entry).get_text ();
-                    new Thread<void*> (null, this.show_search);
-                });
-
-                // create the searchbar
-                Gtk.SearchBar search_bar = new Gtk.SearchBar ();
-                search_bar.add (search_entry);
-                this.m_box.pack_start (search_bar, false, false, 0);
+                this.m_window.header.add (profile);
 
                 this.search = new Gtk.ToggleToolButton ();
                 this.search.set_icon_widget (new Gtk.Image.from_icon_name ("twitter-search", Gtk.IconSize.LARGE_TOOLBAR));
                 search.set_tooltip_text (_("Search"));
                 search.set_label (_("Search"));
 
-                this.search.bind_property("active", search_bar, "search-mode-enabled", GLib.BindingFlags.BIDIRECTIONAL);
-
-                //search.toggled.connect (() => {
-                //    if (!this.changing_tab)
-                //        this.switch_timeline ("search");
-                //});
+                search.toggled.connect (() => {
+                    if (!this.changing_tab)
+                        this.switch_timeline ("search");
+                });
                 this.search.set_sensitive (false);
-                centered_toolbar.add (search);
+                this.m_window.header.add (search);
                 
-                this.m_window.header.set_custom_title (centered_toolbar);
+                var right_sep = new Gtk.SeparatorToolItem ();
+                right_sep.draw = false;
+                right_sep.set_expand (true);
+                this.m_window.header.add (right_sep);
 
                 menu = new Widgets.MenuPopOver ();
                 this.account_appmenu = new Gtk.MenuItem.with_label (_("Add Account"));
@@ -339,8 +324,7 @@ namespace Birdie {
                     if (response == Gtk.ResponseType.OK) {
                         var appmenu_icon = new Gtk.Image.from_icon_name ("application-menu", Gtk.IconSize.MENU);
                         appmenu_icon.show ();
-                        this.appmenu.remove(appmenu.get_child());
-                        this.appmenu.add(appmenu_icon);
+                        this.appmenu.set_icon_widget (appmenu_icon);
                         this.set_widgets_sensitive (false);
                         this.db.remove_account (this.default_account);
                         User account = this.db.get_default_account ();
@@ -423,12 +407,11 @@ namespace Birdie {
                 this.appmenu = new Granite.Widgets.ToolButtonWithMenu (new Gtk.Image.from_icon_name ("application-menu", Gtk.IconSize.MENU), _("Menu"), menu);
                 menu.move_to_widget (appmenu);
                 #else
-                this.appmenu = new Gtk.MenuButton ();
-                this.appmenu.set_relief (Gtk.ReliefStyle.NONE);
-                this.appmenu.set_popup (menu);
+                this.appmenu = new Gtk.MenuToolButton (new Gtk.Image.from_icon_name ("application-menu", Gtk.IconSize.MENU), _("Menu"));
+                this.appmenu.set_menu (menu);
                 #endif
 
-                this.m_window.header.pack_end (appmenu);
+                this.m_window.header.add (appmenu);
 
                 /*==========  tweets lists  ==========*/
 
@@ -519,6 +502,21 @@ namespace Birdie {
 
                 this.user_box.pack_start (this.notebook_user, true, true, 0);
 
+                var search_box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+
+#if HAVE_GRANITE
+                search_entry = new Granite.Widgets.SearchBar (_("Search"));
+#else
+                search_entry = new Gtk.Entry ();
+#endif
+
+                search_entry.activate.connect (() => {
+                    this.search_term = ((Gtk.Entry)search_entry).get_text ();
+                    new Thread<void*> (null, this.show_search);
+                });
+                search_box.pack_start (search_entry, false, false, 0);
+                search_box.pack_start (this.scrolled_search, true, true, 0);
+
                 this.notebook.append_page (spinner_box, new Gtk.Label (_("Loading")));
                 this.notebook.append_page (this.welcome, new Gtk.Label (_("Welcome")));
                 this.notebook.append_page (this.scrolled_home, new Gtk.Label (_("Home")));
@@ -526,11 +524,10 @@ namespace Birdie {
                 this.notebook.append_page (this.notebook_dm, new Gtk.Label (_("Direct Messages")));
                 this.notebook.append_page (this.own_box, new Gtk.Label (_("Profile")));
                 this.notebook.append_page (this.user_box, new Gtk.Label (_("User")));
-                this.notebook.append_page (this.scrolled_search, new Gtk.Label (_("Search")));
+                this.notebook.append_page (search_box, new Gtk.Label (_("Search")));
                 this.notebook.append_page (this.error_page, new Gtk.Label (_("Error")));
 
-                this.m_box.pack_start (this.notebook, true, true, 0);
-                this.m_window.add(this.m_box);
+                this.m_window.box.pack_start (this.notebook, true, true, 0);
 
                 this.m_window.focus_in_event.connect ((w, e) => {
                     #if HAVE_LIBUNITY
@@ -654,9 +651,7 @@ namespace Birdie {
                             if (code == 0) {
                                 Idle.add (() => {
                                     var appmenu_icon = new Gtk.Image.from_icon_name ("application-menu", Gtk.IconSize.MENU);
-                                    appmenu_icon.show ();
-                                    this.appmenu.remove(appmenu.get_child());
-                                    this.appmenu.add(appmenu_icon);
+                                    this.appmenu.set_icon_widget (appmenu_icon);
                                     this.set_widgets_sensitive (false);
                                     return false;
                                 });
@@ -854,8 +849,7 @@ namespace Birdie {
             }
             
             avatar_image.show ();
-            this.appmenu.remove(appmenu.get_child());
-            this.appmenu.add(avatar_image);        
+            this.appmenu.set_icon_widget (avatar_image);
         }
 
         private void switch_account (User account) {

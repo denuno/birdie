@@ -22,7 +22,8 @@ namespace Birdie.Widgets {
         public int window_width;
         public int window_height;
         
-        public Gtk.HeaderBar header;
+        public Gtk.Toolbar header;
+        public Gtk.Box box;
 
         public UnifiedWindow () {
             this.opening_x = -1;
@@ -35,15 +36,12 @@ namespace Birdie.Widgets {
 
             this.delete_event.connect (on_delete_event);
             
-            header = new Gtk.HeaderBar ();
+            header = new Gtk.Toolbar ();
 
-            if (Utils.is_elementary() || Utils.is_gnome() || Utils.is_cinnamon()) {
-                header.set_show_close_button (true);
-            } else {
-                header.set_show_close_button (false);
-            }
+            box = new Gtk.Box (Gtk.Orientation.VERTICAL, 0);
+            box.add (header);
 
-            this.set_titlebar (header);
+            this.add (box);
             this.set_title ("Birdie");
         }
 
